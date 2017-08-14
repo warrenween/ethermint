@@ -11,11 +11,16 @@ import (
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 
+<<<<<<< HEAD
 	"github.com/tendermint/ethermint/ethereum"
 	emtTypes "github.com/tendermint/ethermint/types"
 
 	abciTypes "github.com/tendermint/abci/types"
 	tmLog "github.com/tendermint/tmlibs/log"
+=======
+	"github.com/tendermint/ethermint/ethereum/geth"
+	"github.com/tendermint/ethermint/strategies"
+>>>>>>> 679c442... Rewamp ethereum structure and strategy structure
 )
 
 // EthermintApplication implements an ABCI application
@@ -23,7 +28,12 @@ import (
 type EthermintApplication struct {
 	// backend handles the ethereum state machine
 	// and wrangles other services started by an ethereum node (eg. tx pool)
+<<<<<<< HEAD
 	backend *ethereum.Backend // backend ethereum struct
+=======
+	// This is the running ethereum node.
+	backend *geth.Backend // backend ethereum struct
+>>>>>>> 679c442... Rewamp ethereum structure and strategy structure
 
 	// a closure to return the latest current state from the ethereum blockchain
 	currentState func() (*state.StateDB, error)
@@ -32,15 +42,21 @@ type EthermintApplication struct {
 	rpcClient *rpc.Client
 
 	// strategy for validator compensation
-	strategy *emtTypes.Strategy
+	strategy strategies.Strategy
 
 	logger tmLog.Logger
 }
 
 // NewEthermintApplication creates a fully initialised instance of EthermintApplication
 // #stable - 0.4.0
+<<<<<<< HEAD
 func NewEthermintApplication(backend *ethereum.Backend,
 	client *rpc.Client, strategy *emtTypes.Strategy) (*EthermintApplication, error) {
+=======
+func NewEthermintApplication(backend *geth.Backend,
+	eRPC *eRPC.Client, strategy strategies.Strategy,
+	logger tmLog.Logger) (*EthermintApplication, error) {
+>>>>>>> 679c442... Rewamp ethereum structure and strategy structure
 	app := &EthermintApplication{
 		backend:      backend,
 		rpcClient:    client,
@@ -48,11 +64,16 @@ func NewEthermintApplication(backend *ethereum.Backend,
 		strategy:     strategy,
 	}
 
+<<<<<<< HEAD
 	if err := app.backend.ResetWork(app.Receiver()); err != nil {
 		return nil, err
 	}
 
 	return app, nil
+=======
+	err := app.backend.ResetWork(app.strategy.Beneficiary()) // init the block results
+	return app, err
+>>>>>>> 679c442... Rewamp ethereum structure and strategy structure
 }
 
 // SetLogger sets the logger for the ethermint application
@@ -120,6 +141,7 @@ func (app *EthermintApplication) CheckTx(txBytes []byte) abciTypes.Result {
 
 // DeliverTx executes a transaction against the latest state
 // #stable - 0.4.0
+<<<<<<< HEAD
 func (app *EthermintApplication) DeliverTx(txBytes []byte) abciTypes.Result {
 	tx, err := decodeTx(txBytes)
 	if err != nil {
@@ -136,6 +158,11 @@ func (app *EthermintApplication) DeliverTx(txBytes []byte) abciTypes.Result {
 	app.CollectTx(tx)
 
 	return abciTypes.OK
+=======
+func (a *EthermintApplication) InitChain(validators []*abci.Validator) {
+	a.logger.Debug("InitChain") // nolint: errcheck
+	a.strategy.SetValidators(validators)
+>>>>>>> 679c442... Rewamp ethereum structure and strategy structure
 }
 
 // BeginBlock starts a new Ethereum block
@@ -164,11 +191,17 @@ func (app *EthermintApplication) Commit() abciTypes.Result {
 		app.logger.Error("Error getting latest ethereum state", "err", err) // nolint: errcheck
 		return abciTypes.ErrInternalError.AppendLog(err.Error())
 	}
+<<<<<<< HEAD
 	return abciTypes.NewResultOK(blockHash[:], "")
+=======
+
+	return abci.OK
+>>>>>>> 679c442... Rewamp ethereum structure and strategy structure
 }
 
 // Query queries the state of the EthermintApplication
 // #stable - 0.4.0
+<<<<<<< HEAD
 func (app *EthermintApplication) Query(query abciTypes.RequestQuery) abciTypes.ResponseQuery {
 	app.logger.Debug("Query") // nolint: errcheck
 	var in jsonRequest
@@ -192,6 +225,19 @@ func (app *EthermintApplication) Query(query abciTypes.RequestQuery) abciTypes.R
 // it duplicates the logic in ethereum's tx_pool
 func (app *EthermintApplication) validateTx(tx *ethTypes.Transaction) abciTypes.Result {
 	currentState, err := app.currentState()
+=======
+func (a *EthermintApplication) EndBlock(height uint64) abci.ResponseEndBlock {
+	a.logger.Debug("EndBlock", "height", height) // nolint: errcheck
+	validators := a.strategy.Validators()
+	return abci.ResponseEndBlock{Diffs: validators}
+}
+
+// Commit commits the block and returns a hash of the current state
+// #stable - 0.4.0
+func (a *EthermintApplication) Commit() abci.Result {
+	a.logger.Debug("Commit") // nolint: errcheck
+	blockHash, err := a.backend.Commit(a.strategy.Beneficiary())
+>>>>>>> 679c442... Rewamp ethereum structure and strategy structure
 	if err != nil {
 		return abciTypes.ErrInternalError.AppendLog(err.Error())
 	}
