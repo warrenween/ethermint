@@ -1,13 +1,39 @@
 package utils
 
 import (
-	"github.com/ethereum/go-ethereum/log"
-	"gopkg.in/urfave/cli.v1"
 	"os"
+	"os/signal"
 	"os/user"
 	"path/filepath"
 	"runtime"
+
+	"gopkg.in/urfave/cli.v1"
+
+	ethUtils "github.com/ethereum/go-ethereum/cmd/utils"
+	"github.com/ethereum/go-ethereum/log"
+
+	"github.com/tendermint/ethermint/ethereum"
 )
+
+func StartNode(stack *ethereum.Node) {
+	if err := stack.Start(); err != nil {
+		ethUtils.Fatalf("Error starting protocol stack: %v", err)
+	}
+	go func() {
+		sigc := make(chan os.Signal, 1)
+		signal.Notify(sigc, os.Interrupt)
+		defer signal.Stop(sigc)
+		<-sigc
+		log.Info("Got interrupt, shutting down...")
+		go stack.Stop()
+		for i := 10; i > 0; i-- {
+			<-sigc
+			if i > 1 {
+				log.Warn("Already shutting down, interrupt more to panic.", "times", i-1)
+			}
+		}
+	}()
+}
 
 // HomeDir returns the user's home most likely home directory
 // #unstable
@@ -39,9 +65,13 @@ func DefaultDataDir() string {
 	return ""
 }
 
-func ResetAll(ctx *cli.Context) {
+func ResetAll(ctx *cli.Context) error {
 	dbDir := filepath.Join(MakeDataDir(ctx), "ethermint")
-	os.RemoveAll(dbDir)
+	if err := os.RemoveAll(dbDir); err != nil {
+		log.Debug("Could not reset ethermint. Failed to remove %+v", dbDir)
+		return err
+	}
 
 	log.Info("Successfully removed all data", "dir", dbDir)
+	return nil
 }

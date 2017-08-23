@@ -13,7 +13,7 @@ import (
 // 2. init genesis
 // 3. reset all
 // 4. check dir is empty
-func TestEmHomeResetAll(t *testing.T) {
+func TestResetAll(t *testing.T) {
 	// setup temp data dir
 	tempDatadir, err := ioutil.TempDir("", "ethermint_test")
 	if err != nil {
@@ -23,6 +23,7 @@ func TestEmHomeResetAll(t *testing.T) {
 
 	// set EMHOME env variable
 	os.Setenv(emHome, tempDatadir)
+	defer os.Unsetenv(emHome)
 
 	// context with empty flag set
 	context := getContextNoFlag()
@@ -47,9 +48,7 @@ func TestEmHomeResetAll(t *testing.T) {
 	}
 
 	// clear
-	ResetAll(context)
-
-	if _, err = os.Stat(dataDir); err == nil {
-		t.Errorf("removed database exists: %+v", err)
+	if err = ResetAll(context); err != nil {
+		t.Errorf("Failed to remove ethermint home directory: %+v", err)
 	}
 }

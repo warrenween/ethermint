@@ -6,7 +6,5 @@ import (
 )
 
 func resetCmd(ctx *cli.Context) error {
-	emtUtils.ResetAll(ctx)
-
-	return nil
+	return emtUtils.ResetAll(ctx)
 }
